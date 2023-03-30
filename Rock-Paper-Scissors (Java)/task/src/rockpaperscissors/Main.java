@@ -1,59 +1,92 @@
 package rockpaperscissors;
 
-import java.util.Random;
-import java.util.Scanner;
+import java.io.*;
+import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class Main {
-    public static void main(String[] args) {
+    public static void main(String[] args){
         // write your code here
+        Scanner input = new Scanner(System.in);
+        Player currentPlayer;
+        boolean isDefaultGamePlay = false;
+
+        // taking input name form the current player
+        System.out.print("Enter your name: ");
+        String currentPlayerName = input.nextLine();
+        System.out.println("Hello, "+currentPlayerName);
+
+        // Loading players data from the rating.txt file to plauerDataMap.
+
+        Map<String,Player> playersDataMap = new HashMap<>();
+        File playerDataFile = new File("rating.txt");
+        try (BufferedReader br = new BufferedReader(new FileReader(playerDataFile)) ) {
+            Stream<String> temp = br.lines();
+            playersDataMap = temp.map(s -> s.split(" "))
+                    .map(s -> new Player(s[0],Integer.parseInt(s[1])))
+                    .collect(Collectors.toMap(Player::getName,p -> p));
+
+        }catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        /*
+        try (Scanner sc = new Scanner(playerDataFile)) {
+            while(sc.hasNextLine()) {
+                StringTokenizer temp = new StringTokenizer(sc.nextLine());
+                String playerName = temp.nextToken();
+                int playerScore = Integer.parseInt(temp.nextToken());
+                Player player = new Player(playerName, playerScore);
+                playersDataMap.put(playerName,player);
+            }
+        } catch (FileNotFoundException | NumberFormatException e) {
+            e.printStackTrace();
+        }
+        */
+
+        String options = input.nextLine();
+        StringTokenizer tokens;
+        if(!options.isBlank()) {
+            tokens = new StringTokenizer(options,",");
+        } else {
+            isDefaultGamePlay = true;
+            tokens = new StringTokenizer("rock paper scissors"," ");
+        }
+        Choices bucket = new Choices(tokens);
+
+        // checking if the player exists in the plyersDataMap.
+        if(playersDataMap.containsKey(currentPlayerName)) {
+            currentPlayer = playersDataMap.get(currentPlayerName);
+        } else {
+            currentPlayer = new Player(currentPlayerName,0);
+            playersDataMap.put(currentPlayerName,currentPlayer);
+        }
+
+        // running the game.
+        System.out.println("Okay, let's start");
         while(true) {
             Scanner in = new Scanner(System.in);
             String userChoiceString = in.next().toLowerCase();
             if(userChoiceString.equals("!exit")) {
+                //exiting out of the game.
                 break;
+            } else if(userChoiceString.equals("!rating")) {
+                //creating a new game.
+                System.out.println("Your rating: " + currentPlayer.getScore());
+                continue;
             }
-
-            Choice userChoice = null;
-            try {
-                userChoice = Choice.valueOf(userChoiceString);
-            } catch (IllegalArgumentException e) {
+            if(!bucket.optionsList.contains(userChoiceString)) {
                 System.out.println("Invalid input");
                 continue;
             }
 
             Random random = new Random();
-            int randomNumber = Math.abs(random.nextInt() % 3);
-            String computerChoice = getChoiceAsString(randomNumber);
-
-            GameResult resultVal = GameResult.getResult(userChoice ,computerChoice);
-            printResultFrom(resultVal,userChoice,computerChoice);
+            int randomNumber = Math.abs(random.nextInt() % bucket.optionsList.size());
+            String computerChoiceString = bucket.optionsList.get(randomNumber);
+            Choices.printResult(currentPlayer,bucket.optionsList,userChoiceString,computerChoiceString,isDefaultGamePlay);
         }
 
         System.out.println("Bye!");
-    }
-
-    private static void printResultFrom(GameResult resultVal,Choice userChoice,String computerChoice) {
-        switch(resultVal) {
-            case DRAW :
-                System.out.println("There is a draw (" + userChoice  + ")");
-                break;
-            case LOST :
-                System.out.println("Sorry, but the computer chose "+computerChoice);
-                break;
-            case WON :
-                System.out.println("Well done. The computer chose "+computerChoice+" and failed");
-        }
-    }
-
-    private static String getChoiceAsString(int choiceNum) {
-        switch(choiceNum) {
-            case 0 :
-                return "rock";
-            case 1 :
-                return "scissors";
-            case 2 :
-                return "paper";
-        }
-        return null;
     }
 }
